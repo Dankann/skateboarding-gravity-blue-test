@@ -10,6 +10,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "SBCharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -80,6 +81,8 @@ void ASBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		
+		EnhancedInputComponent->BindAction(ToggleSkate, ETriggerEvent::Completed, this, &ASBCharacter::ToggleMovementMode);
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASBCharacter::Move);
@@ -90,6 +93,18 @@ void ASBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	else
 	{
 		UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+	}
+}
+
+void ASBCharacter::ToggleMovementMode()
+{
+	if(GetCharacterMovement()->MovementMode == MOVE_Custom)
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking, MOVE_None);
+	}
+	else
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Custom, MOVE_Skate);
 	}
 }
 
@@ -109,6 +124,11 @@ void ASBCharacter::Move(const FInputActionValue& Value)
 	
 		// get right vector 
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		// UCharacterMovementComponent* MovementComponent = Cast<UCharacterMovementComponent>(GetMovementComponent());
+		// MovementComponent->AddImpulse(ForwardDirection * 1000.f, true);
+		// UE_LOG(LogTemplateCharacter, Log, TEXT("ForwardDirection: %f, %f, %f"), ForwardDirection.X, ForwardDirection.Y, ForwardDirection.Z);
+		// UE_LOG(LogTemplateCharacter, Log, TEXT("MovementVector.Y: %f"), MovementVector.Y);
 
 		// add movement 
 		AddMovementInput(ForwardDirection, MovementVector.Y);
