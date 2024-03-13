@@ -9,11 +9,11 @@
 UENUM(BlueprintType)
 enum ECustomMovementMode
 {
-	MOVE_Skate UMETA(DisplayName = "Skate"),
+	CMOVE_Skate UMETA(DisplayName = "Skate"),
 };
 
 /**
- * 
+ * Custom character movement component for skateboarding
  */
 UCLASS()
 class SKATEBOARDING_API USBCharacterMovementComponent : public UCharacterMovementComponent
@@ -24,20 +24,28 @@ public:
 	virtual void InitializeComponent() override;
 
 	virtual void PhysCustom(float DeltaTime, int32 Iterations) override;
+
+	void SetFrictionMultiplier(float Value);
+
+	bool GetIsGrounded();
 	
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
-	float SkateFriction = 1.f;
+	float Friction = 1.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
-	float SkateGroundGravity = 1000.f;
+	float GroundGravity = 1000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
-	float SkateAirGravity = 4000.f;
+	float AirGravity = 4000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
-	float SkateSlopeGravityScale = 10.f;
+	float SlopeGravityScale = 10.f;
+
+	float FrictionMultiplier = 1.f;
+
+	bool bIsGrounded = true;
 	
+private:	
 	void EnterSkate();
 	void ExitSkate();
-	bool IsGrounded();
 	void PhysSkate(float DeltaTime, int32 Iterations);
 	bool GetSurface(FHitResult& Hit) const;
 };
