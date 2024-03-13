@@ -57,8 +57,8 @@ ASBCharacter::ASBCharacter()
 	SkateboardStaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	SkateboardSocket = CreateDefaultSubobject<USceneComponent>(TEXT("SkateboardSocket"));
-	SkateboardSocket->SetupAttachment(RootComponent);	
-	
+	SkateboardSocket->SetupAttachment(RootComponent);
+
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
@@ -67,7 +67,7 @@ void ASBCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
-	
+
 	//Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
@@ -87,7 +87,7 @@ void ASBCharacter::HandleCameraRotationWhileSkating(float DeltaSeconds)
 	{
 		return;
 	}
-	
+
 	FVector Vector = (GetActorLocation() - LastPosition) / DeltaSeconds;
 	FVector NormalizedVector = Vector.GetSafeNormal();
 	float Yaw = FMath::RadiansToDegrees(FMath::Atan2(NormalizedVector.Y, NormalizedVector.X));
@@ -105,13 +105,14 @@ void ASBCharacter::Tick(float DeltaSeconds)
 
 USBCharacterMovementComponent* ASBCharacter::GetSkateMovementComponent()
 {
-	if(SkateMovementComponent == nullptr)
+	if (SkateMovementComponent == nullptr)
 	{
 		SkateMovementComponent = Cast<USBCharacterMovementComponent>(GetMovementComponent());
 	}
 
 	return SkateMovementComponent;
 }
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -176,16 +177,25 @@ void ASBCharacter::Jump()
 
 void ASBCharacter::Accelerate()
 {
-	if (Controller != nullptr)
+	if (Controller == nullptr)
 	{
-		//Add Skate Impulse
-		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom
-			&& GetSkateMovementComponent()->CustomMovementMode == CMOVE_Skate
-			&& GetSkateMovementComponent()->GetIsGrounded() == true)
-		{
-			GetSkateMovementComponent()->AddImpulse(FollowCamera->GetForwardVector() * ImpulseForce, true);
-		}
+		return;
 	}
+
+	if (GetSkateMovementComponent()->MovementMode != MOVE_Custom || GetSkateMovementComponent()->CustomMovementMode !=
+		CMOVE_Skate || GetSkateMovementComponent()->GetIsGrounded() == false)
+	{
+		return;
+	}
+
+	const int64 CurrentTicks = FTimespan::FromSeconds(GetWorld()->GetTimeSeconds()).GetTicks();
+	if (FDateTime(CurrentTicks - LastAccelerationTimeTicks).GetSecond() < AccelerationDelay)
+	{
+		return;
+	}
+	//change this to add impulse in the 
+	GetSkateMovementComponent()->AddImpulse(GetCapsuleComponent()->GetForwardVector() * ImpulseForce, true);
+	LastAccelerationTimeTicks = FTimespan::FromSeconds(GetWorld()->GetTimeSeconds()).GetTicks();
 }
 
 void ASBCharacter::BreakStarted()
@@ -262,7 +272,8 @@ void ASBCharacter::StartWalking()
 {
 	UE_LOG(LogTemplateCharacter, Log, TEXT("Set walking"));
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking, MOVE_None);
-	SkateboardStaticMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WalkingSkateboardSocket);
+	SkateboardStaticMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+	                                        WalkingSkateboardSocket);
 	CameraBoom->bInheritPitch = true;
 	CameraBoom->bInheritRoll = true;
 	CameraBoom->bInheritYaw = true;

@@ -77,6 +77,9 @@ protected:
 	/** Lean rate for rotating the skateboard */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skate")
 	double LeanRate = 100.f;
+	/** Min amount of time in seconds the player has to wait before accelerating again */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skate")
+	float AccelerationDelay = 1.f; 
 	
 	/** Socket to attach the skateboard while walking */
 	UPROPERTY(EditAnywhere, Category = "Socket")
@@ -90,6 +93,8 @@ protected:
 	FName SkatingSkateboardSocket = "foot_r";
 	
 	FVector LastPosition;
+
+	int64 LastAccelerationTimeTicks;
 
 	USBCharacterMovementComponent* SkateMovementComponent;
 

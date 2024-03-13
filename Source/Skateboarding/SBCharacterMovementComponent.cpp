@@ -50,16 +50,19 @@ void USBCharacterMovementComponent::PhysSkate(float DeltaTime, int32 Iterations)
 	if (GetSurface(Hit) == true)
 	{
 		bIsGrounded = true;
+		
 		/// On flat surfaces, DotProduct will be 1.f
 		///    	               \                    |                  /           
 		///   __⬆__  Dot: 1     \ ↗  Dot: 0.7       |➡  Dot: 0       /↘  Dot: -0.7 
-		///	                     \                  |                /						
+		///	                     \                  |                /
+		
 		const float UpDotProduct = Hit.Normal.Dot(FVector::UpVector);
-		const float RightDotProduct = Hit.Normal.Dot(FVector::RightVector);
-		const float DownDotProduct = Hit.Normal.Dot(FVector::DownVector);
 
-		DrawDebugString(GetWorld(), Hit.Location, FString::Printf(TEXT("Dot(Normal, UpVector): %f"), UpDotProduct), nullptr, FColor::Emerald, DeltaTime, true);
-		DrawDebugDirectionalArrow(GetWorld(), Hit.Location, Hit.Location + Hit.Normal * 50.f, 100.f, FColor::Green, false, 2.f);
+		//Debugging		
+		// const float RightDotProduct = Hit.Normal.Dot(FVector::RightVector);
+		// const float DownDotProduct = Hit.Normal.Dot(FVector::DownVector);
+		//DrawDebugString(GetWorld(), Hit.Location, FString::Printf(TEXT("Dot(Normal, UpVector): %f"), UpDotProduct), nullptr, FColor::Emerald, DeltaTime, true);
+		//DrawDebugDirectionalArrow(GetWorld(), Hit.Location, Hit.Location + Hit.Normal * 50.f, 100.f, FColor::Green, false, 2.f);
 		
 		// Calculate the parallel acceleration using the magnitude of the parallel gravity force
 		float ScaledMassRelativeToSlope = UpDotProduct / Mass;
@@ -67,15 +70,17 @@ void USBCharacterMovementComponent::PhysSkate(float DeltaTime, int32 Iterations)
 		
 		//Apply gravity 
 		Velocity += GroundGravity * FVector::DownVector * DeltaTime;
-		
-		// if(FMath::Abs(FVector::DotProduct(Acceleration.GetSafeNormal(), UpdatedComponent->GetRightVector()))> .5f)
-		// {
-		// 	Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector());
-		// }
-		// else
-		// {
-		// 	Acceleration = FVector::ZeroVector;
-		// } 
+
+		// Check if we have acceleration along the right vector of the component, and project it onto the right axis (only accelerate right or left)
+		if(FMath::Abs(FVector::DotProduct(Acceleration.GetSafeNormal(), UpdatedComponent->GetRightVector()))> .5f)
+		{
+			//Not sure if this changes much as we are adding force to right/left input
+			Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector());
+		}
+		else
+		{
+			Acceleration = FVector::ZeroVector;
+		} 
 		
 	}// Mid air
 	else
@@ -100,11 +105,11 @@ void USBCharacterMovementComponent::PhysSkate(float DeltaTime, int32 Iterations)
 	FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	FVector Adjusted = Velocity * DeltaTime;
 	
-	//Rotate player to slope if grounded
 	// FQuat NewRotation = UpdatedComponent->GetComponentRotation().Quaternion();
 	// FVector VelocityPlaneDirection = FVector::VectorPlaneProject(Velocity, Hit.Normal).GetSafeNormal();
 	// FQuat NewRotation = FRotationMatrix::MakeFromZX(VelocityPlaneDirection, Hit.Normal).ToQuat();
 
+	//Rotate player to slope if grounded
 	FRotator GroundAlignment = FRotationMatrix::MakeFromZX(Hit.Normal, UpdatedComponent->GetForwardVector()).Rotator();
 	FRotator DirectionOfMovement = FRotator(GroundAlignment.Euler().X, GroundAlignment.Euler().X, Velocity.ToOrientationRotator().Yaw);
 	GroundAlignment.Yaw = Velocity.ToOrientationRotator().Yaw;
@@ -128,10 +133,8 @@ void USBCharacterMovementComponent::PhysSkate(float DeltaTime, int32 Iterations)
 bool USBCharacterMovementComponent::GetSurface(FHitResult& Hit) const
 {
 	FVector Start = UpdatedComponent->GetComponentLocation();
-	// FVector End = Start + CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 1.5f * (-1 * CharacterOwner->GetActorUpVector());//FVector::DownVector;
-	FVector End = Start + CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * (-1 * CharacterOwner->
-		GetActorUpVector()) * 1.5f;
+	FVector End = Start + CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * (-1 * CharacterOwner->GetActorUpVector()) * 1.5f;
 	
-	DrawDebugDirectionalArrow(GetWorld(), Start, End, 100.f, FColor::Red, false, 2.f);
+	//DrawDebugDirectionalArrow(GetWorld(), Start, End, 100.f, FColor::Red, false, 2.f);
 	return GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility);
 }

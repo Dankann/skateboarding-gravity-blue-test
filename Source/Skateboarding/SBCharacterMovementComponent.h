@@ -32,10 +32,13 @@ public:
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
 	float Friction = 1.f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
 	float GroundGravity = 1000.f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
 	float AirGravity = 4000.f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
 	float SlopeGravityScale = 10.f;
 
