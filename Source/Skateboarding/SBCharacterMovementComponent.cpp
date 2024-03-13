@@ -38,7 +38,9 @@ bool USBCharacterMovementComponent::GetIsGrounded()
 
 bool USBCharacterMovementComponent::GetIsSkateInAir()
 {
-	return CustomMovementMode == CMOVE_Skate && GetIsGrounded();
+	bool b = (CustomMovementMode == CMOVE_Skate && GetIsGrounded() == false);
+	FText boolean = b ? FText::FromString("true") : FText::FromString("false");
+	return CustomMovementMode == CMOVE_Skate && GetIsGrounded() == false;
 }
 
 void USBCharacterMovementComponent::PhysSkate(float DeltaTime, int32 Iterations)

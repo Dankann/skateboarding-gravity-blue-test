@@ -113,6 +113,16 @@ USBCharacterMovementComponent* ASBCharacter::GetSkateMovementComponent()
 	return SkateMovementComponent;
 }
 
+float ASBCharacter::GetLean()
+{
+	return LeanDirection;
+}
+
+bool ASBCharacter::GetIsAccelerating()
+{
+	return bIsAccelerating;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -122,14 +132,15 @@ void ASBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		///Skating and Walking///
-		EnhancedInputComponent->BindAction(ToggleSkate, ETriggerEvent::Completed, this,
-		                                   &ASBCharacter::ToggleMovementMode);
+		EnhancedInputComponent->BindAction(ToggleSkate, ETriggerEvent::Completed, this, &ASBCharacter::ToggleMovementMode);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ASBCharacter::Jump);
 
 
 		///Skating inputs///
 		EnhancedInputComponent->BindAction(LeanAction, ETriggerEvent::Triggered, this, &ASBCharacter::Lean);
+		EnhancedInputComponent->BindAction(LeanAction, ETriggerEvent::Completed, this, &ASBCharacter::LeanCompleted);
 		EnhancedInputComponent->BindAction(AccelerateAction, ETriggerEvent::Triggered, this, &ASBCharacter::Accelerate);
+		EnhancedInputComponent->BindAction(AccelerateAction, ETriggerEvent::Completed, this, &ASBCharacter::AccelerateCompleted);
 		EnhancedInputComponent->BindAction(BreakAction, ETriggerEvent::Started, this, &ASBCharacter::BreakStarted);
 		EnhancedInputComponent->BindAction(BreakAction, ETriggerEvent::Completed, this, &ASBCharacter::BreakCompleted);
 
@@ -193,9 +204,15 @@ void ASBCharacter::Accelerate()
 	{
 		return;
 	}
-	//change this to add impulse in the 
+	//@todo Test with add movement input later
 	GetSkateMovementComponent()->AddImpulse(GetCapsuleComponent()->GetForwardVector() * ImpulseForce, true);
 	LastAccelerationTimeTicks = FTimespan::FromSeconds(GetWorld()->GetTimeSeconds()).GetTicks();
+	bIsAccelerating = true;
+}
+
+void ASBCharacter::AccelerateCompleted()
+{
+	bIsAccelerating = false;
 }
 
 void ASBCharacter::BreakStarted()
@@ -218,10 +235,15 @@ void ASBCharacter::Lean(const FInputActionValue& Value)
 			&& GetSkateMovementComponent()->CustomMovementMode == CMOVE_Skate)
 		{
 			// input is a float
-			float LeanDirection = Value.Get<float>();
+			LeanDirection = Value.Get<float>();
 			GetSkateMovementComponent()->AddForce(FollowCamera->GetRightVector() * (LeanDirection * LeanRate));
 		}
 	}
+}
+
+void ASBCharacter::LeanCompleted()
+{
+	LeanDirection = 0.f;
 }
 
 void ASBCharacter::Move(const FInputActionValue& Value)
@@ -279,7 +301,7 @@ void ASBCharacter::StartWalking()
 	CameraBoom->bInheritYaw = true;
 	CameraBoom->bUsePawnControlRotation = true;
 
-	SkateboardStaticMesh->SetRelativeRotation(FRotator(90.f, 270.f, 0.f));
+	SkateboardStaticMesh->SetRelativeRotation(FRotator::ZeroRotator);
 }
 
 void ASBCharacter::StartSkating()

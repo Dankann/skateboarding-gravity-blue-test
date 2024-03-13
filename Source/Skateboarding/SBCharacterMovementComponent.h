@@ -27,8 +27,10 @@ public:
 
 	void SetFrictionMultiplier(float Value);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
 	bool GetIsGrounded();
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
 	bool GetIsSkateInAir();
 	
 private:

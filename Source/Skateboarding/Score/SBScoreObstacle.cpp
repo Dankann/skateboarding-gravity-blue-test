@@ -48,6 +48,6 @@ void ASBScoreObstacle::OnOverlapBegin(AActor* OverlappedActor, AActor* OtherActo
 
 	Subsystem->RequestAddScore(Character, ScoreAmount);
 
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, *FString::Printf(TEXT("Score: %d"), Subsystem->GetScore()));
+	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, *FString::Printf(TEXT("Score: %d"), Subsystem->GetScore()));
 }
 

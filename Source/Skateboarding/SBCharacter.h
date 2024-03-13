@@ -94,6 +94,9 @@ protected:
 	
 	FVector LastPosition;
 
+	float LeanDirection;
+	bool bIsAccelerating;
+
 	int64 LastAccelerationTimeTicks;
 
 	USBCharacterMovementComponent* SkateMovementComponent;
@@ -108,23 +111,33 @@ public:
 	virtual void Jump() override;
 
 	USBCharacterMovementComponent* GetSkateMovementComponent();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	float GetLean();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	bool GetIsAccelerating();
 	
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
+
 	// To add mapping context
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaSeconds) override;
-	
+
 	void HandleCameraRotationWhileSkating(float DeltaSeconds);
-	
+
 	/** Called for lean right and left on a skateboard */
 	void Lean(const FInputActionValue& Value);
+	/** Resets lean value for animations */
+	void LeanCompleted();
 	/** Toggle between skating and walking*/
 	void ToggleMovementMode();
 	/** Applies a forward force the the skate */
 	void Accelerate();
+	/** Resets accelerate flag for animations */
+	void AccelerateCompleted();
 	/** Increases the friction of the skate physics, causing it to break */
 	void BreakStarted();
 	/** Resets the friction of the skate physics, stop breaking */
