@@ -21,7 +21,7 @@ ASBCharacter::ASBCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -48,12 +48,17 @@ ASBCharacter::ASBCharacter()
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	// Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	SkateboardStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SkateboardMesh"));
 	SkateboardStaticMesh->SetupAttachment(RootComponent);
 	SkateboardStaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	SkateboardSocket = CreateDefaultSubobject<USceneComponent>(TEXT("SkateboardSocket"));
+	SkateboardSocket->SetupAttachment(RootComponent);	
+	
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
@@ -63,75 +68,109 @@ void ASBCharacter::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 	
-	SkateMovementComponent = Cast<USBCharacterMovementComponent>(GetMovementComponent());	
-
 	//Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<
+			UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
 	}
+
+	StartSkating();
+}
+
+void ASBCharacter::HandleCameraRotationWhileSkating(float DeltaSeconds)
+{
+	if (GetSkateMovementComponent()->MovementMode == MOVE_Walking)
+	{
+		return;
+	}
+	
+	FVector Vector = (GetActorLocation() - LastPosition) / DeltaSeconds;
+	FVector NormalizedVector = Vector.GetSafeNormal();
+	float Yaw = FMath::RadiansToDegrees(FMath::Atan2(NormalizedVector.Y, NormalizedVector.X));
+
+	CameraBoom->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
+	LastPosition = GetActorLocation();
 }
 
 void ASBCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	FVector Vector = (GetActorLocation() - LastPosition) / DeltaSeconds;
 
-	FVector NormalizedVector = Vector.GetSafeNormal();
-	// Find yaw.
-	float Yaw = FMath::RadiansToDegrees(FMath::Atan2(NormalizedVector.Y, NormalizedVector.X));
-	
-	CameraBoom->SetRelativeRotation(FRotator(0.f,Yaw, 0.f));
-	LastPosition = GetActorLocation();
-	
-	// FRotator NewRotation = FRotator(SkateMovementComponent->Velocity.X, 0.f, SkateMovementComponent->Velocity.Z);
-	// GetCapsuleComponent()->SetRelativeRotation(NewRotation);
+	HandleCameraRotationWhileSkating(DeltaSeconds);
 }
 
+USBCharacterMovementComponent* ASBCharacter::GetSkateMovementComponent()
+{
+	if(SkateMovementComponent == nullptr)
+	{
+		SkateMovementComponent = Cast<USBCharacterMovementComponent>(GetMovementComponent());
+	}
+
+	return SkateMovementComponent;
+}
 //////////////////////////////////////////////////////////////////////////
 // Input
 
 void ASBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
-		// Jumping
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		///Skating and Walking///
+		EnhancedInputComponent->BindAction(ToggleSkate, ETriggerEvent::Completed, this,
+		                                   &ASBCharacter::ToggleMovementMode);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ASBCharacter::Jump);
-		// EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-		
-		EnhancedInputComponent->BindAction(ToggleSkate, ETriggerEvent::Completed, this, &ASBCharacter::ToggleMovementMode);
 
-		// Lean
+
+		///Skating inputs///
 		EnhancedInputComponent->BindAction(LeanAction, ETriggerEvent::Triggered, this, &ASBCharacter::Lean);
-		
 		EnhancedInputComponent->BindAction(AccelerateAction, ETriggerEvent::Triggered, this, &ASBCharacter::Accelerate);
 		EnhancedInputComponent->BindAction(BreakAction, ETriggerEvent::Started, this, &ASBCharacter::BreakStarted);
 		EnhancedInputComponent->BindAction(BreakAction, ETriggerEvent::Completed, this, &ASBCharacter::BreakCompleted);
 
-		// Looking
-		// EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASBCharacter::Look);
+		///Walking inputs///
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASBCharacter::Move);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASBCharacter::Look);
 	}
 	else
 	{
-		UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		UE_LOG(LogTemplateCharacter, Error,
+		       TEXT(
+			       "'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."
+		       ), *GetNameSafe(this));
 	}
 }
 
 void ASBCharacter::ToggleMovementMode()
 {
-	if(GetCharacterMovement()->MovementMode == MOVE_Custom)
+	if (GetCharacterMovement()->MovementMode == MOVE_Custom)
 	{
-		UE_LOG(LogTemplateCharacter, Log, TEXT("Set walking"));
-		GetCharacterMovement()->SetMovementMode(MOVE_Walking, MOVE_None);
+		StartWalking();
 	}
 	else
 	{
-		UE_LOG(LogTemplateCharacter, Log, TEXT("Set skating"));
-		GetCharacterMovement()->SetMovementMode(MOVE_Custom, CMOVE_Skate);
+		StartSkating();
+	}
+}
+
+void ASBCharacter::Jump()
+{
+	if (Controller != nullptr)
+	{
+		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom
+			&& GetSkateMovementComponent()->CustomMovementMode == CMOVE_Skate
+			&& GetSkateMovementComponent()->GetIsGrounded() == true)
+		{
+			GetSkateMovementComponent()->AddImpulse(GetCapsuleComponent()->GetUpVector() * ImpulseForce, true);
+		}
+		else
+		{
+			Super::Jump();
+		}
 	}
 }
 
@@ -140,11 +179,11 @@ void ASBCharacter::Accelerate()
 	if (Controller != nullptr)
 	{
 		//Add Skate Impulse
-		if(SkateMovementComponent->MovementMode == MOVE_Custom
-			&& SkateMovementComponent->CustomMovementMode == CMOVE_Skate
-			&& SkateMovementComponent->GetIsGrounded() == true)
+		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom
+			&& GetSkateMovementComponent()->CustomMovementMode == CMOVE_Skate
+			&& GetSkateMovementComponent()->GetIsGrounded() == true)
 		{
-			SkateMovementComponent->AddImpulse(FollowCamera->GetForwardVector() * ImpulseForce, true);
+			GetSkateMovementComponent()->AddImpulse(FollowCamera->GetForwardVector() * ImpulseForce, true);
 		}
 	}
 }
@@ -152,78 +191,53 @@ void ASBCharacter::Accelerate()
 void ASBCharacter::BreakStarted()
 {
 	BreakFrictionScalar = 7.f;
-	SkateMovementComponent->SetFrictionMultiplier(BreakFrictionScalar);
+	GetSkateMovementComponent()->SetFrictionMultiplier(BreakFrictionScalar);
 }
 
 void ASBCharacter::BreakCompleted()
 {
-	SkateMovementComponent->SetFrictionMultiplier(1.f);
-}
-
-void ASBCharacter::Jump()
-{
-	//Super::Jump();
-	if (Controller != nullptr)
-	{
-		if(SkateMovementComponent->MovementMode == MOVE_Custom
-			&& SkateMovementComponent->CustomMovementMode == CMOVE_Skate
-			&& SkateMovementComponent->GetIsGrounded() == true)
-		{
-			SkateMovementComponent->AddImpulse(GetCapsuleComponent()->GetUpVector() * ImpulseForce, true);
-		}
-	}
+	GetSkateMovementComponent()->SetFrictionMultiplier(1.f);
 }
 
 void ASBCharacter::Lean(const FInputActionValue& Value)
 {
+	if (Controller != nullptr)
+	{
+		//Add Skate Impulse
+		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom
+			&& GetSkateMovementComponent()->CustomMovementMode == CMOVE_Skate)
+		{
+			// input is a float
+			float LeanDirection = Value.Get<float>();
+			GetSkateMovementComponent()->AddForce(FollowCamera->GetRightVector() * (LeanDirection * LeanRate));
+		}
+	}
+}
 
+void ASBCharacter::Move(const FInputActionValue& Value)
+{
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
-	
-	if (Controller != nullptr)
-	{
-		// FRotator Rotator = FRotator(0.f, MovementVector.X * LeanRate, 0.f);			
-		//GetCapsuleComponent()->AddRelativeRotation(Rotator);
-	}
-	SkateMovementComponent->AddForce(FollowCamera->GetRightVector() * (MovementVector.X * LeanRate ));
-	// AddMovementInput(FollowCamera->GetRightVector(), MovementVector.X * LeanRate);	
-	
-	
-	if (Controller != nullptr)
-	{
-		// add yaw and pitch input to controller
-		//AddControllerYawInput(MovementVector.X * LeanRate);
-		//AddControllerPitchInput(LookAxisVector.Y);
-	}
-	
-	
-	// input is a Vector2D
-	// FVector2D MovementVector = Value.Get<FVector2D>();
-	
+
 	if (Controller != nullptr)
 	{
 		FVector ForwardDirection;
 		FVector RightDirection;
 		if (GetCharacterMovement()->MovementMode == MOVE_Custom)
 		{
-			//Skate Controlling based on camera position
-			ForwardDirection = FollowCamera->GetForwardVector();
-			RightDirection = FollowCamera->GetRightVector();
+			return;
+		}
 
-		}
-		else
-		{
-			//Biped Controlling
-			// find out which way is forward based on controller rotation
-			const FRotator Rotation = Controller->GetControlRotation();
-			const FRotator YawRotation(0, Rotation.Yaw, 0);
-			ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-			RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		}
+		// Only move while walking
+		// find out which way is forward based on controller rotation
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
 		// add movement 
-		// AddMovementInput(ForwardDirection, MovementVector.Y);
-		// AddMovementInput(RightDirection, MovementVector.X);
+		AddMovementInput(ForwardDirection, MovementVector.Y);
+		AddMovementInput(RightDirection, MovementVector.X);
 	}
 }
 
@@ -234,11 +248,37 @@ void ASBCharacter::Look(const FInputActionValue& Value)
 
 	if (Controller != nullptr)
 	{
-		if(SkateMovementComponent->MovementMode == MOVE_Walking)
+		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom)
 		{
-			// add yaw and pitch input to controller
-			AddControllerYawInput(LookAxisVector.X);
-			AddControllerPitchInput(LookAxisVector.Y);
+			return;
 		}
+		// add yaw and pitch input to controller
+		AddControllerYawInput(LookAxisVector.X);
+		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+void ASBCharacter::StartWalking()
+{
+	UE_LOG(LogTemplateCharacter, Log, TEXT("Set walking"));
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking, MOVE_None);
+	SkateboardStaticMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WalkingSkateboardSocket);
+	CameraBoom->bInheritPitch = true;
+	CameraBoom->bInheritRoll = true;
+	CameraBoom->bInheritYaw = true;
+	CameraBoom->bUsePawnControlRotation = true;
+
+	SkateboardStaticMesh->SetRelativeRotation(FRotator(90.f, 270.f, 0.f));
+}
+
+void ASBCharacter::StartSkating()
+{
+	UE_LOG(LogTemplateCharacter, Log, TEXT("Set skating"));
+	GetCharacterMovement()->SetMovementMode(MOVE_Custom, CMOVE_Skate);
+	SkateboardStaticMesh->AttachToComponent(SkateboardSocket, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	CameraBoom->bInheritPitch = false;
+	CameraBoom->bInheritRoll = false;
+	CameraBoom->bInheritYaw = false;
+	CameraBoom->bUsePawnControlRotation = false;
+	// SkateboardStaticMesh->SetRelativeRotation(FRotator(90.f, 0.f, 0.f));
 }

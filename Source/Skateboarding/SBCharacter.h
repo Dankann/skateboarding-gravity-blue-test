@@ -36,6 +36,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
 
+	/** Toggle between Skate/Wal movement modes Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ToggleSkate;
+	
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* JumpAction;
@@ -52,13 +56,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LeanAction;
 
+	/** Move Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* MoveAction;
+	
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
-	
-	/** Toggle between Skate/Wal movement modes Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* ToggleSkate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skate")
 	UStaticMeshComponent* SkateboardStaticMesh;
@@ -73,11 +77,21 @@ protected:
 	/** Lean rate for rotating the skateboard */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skate")
 	double LeanRate = 100.f;
+	
+	/** Socket to attach the skateboard while walking */
+	UPROPERTY(EditAnywhere, Category = "Socket")
+	FName WalkingSkateboardSocket = "hand_r";
 
+	UPROPERTY(EditAnywhere, Category = "Socket")
+	USceneComponent* SkateboardSocket;
+	
+	/** Socket to attach the skateboard while skating */
+	UPROPERTY(EditAnywhere, Category = "Socket")
+	FName SkatingSkateboardSocket = "foot_r";
+	
 	FVector LastPosition;
 
 	USBCharacterMovementComponent* SkateMovementComponent;
-	
 
 public:
 	/** Returns CameraBoom subobject **/
@@ -87,6 +101,8 @@ public:
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	
 	virtual void Jump() override;
+
+	USBCharacterMovementComponent* GetSkateMovementComponent();
 	
 protected:
 	// APawn interface
@@ -94,15 +110,26 @@ protected:
 	
 	// To add mapping context
 	virtual void BeginPlay();
-
 	virtual void Tick(float DeltaSeconds) override;
 	
-	/** Called for movement input */
+	void HandleCameraRotationWhileSkating(float DeltaSeconds);
+	
+	/** Called for lean right and left on a skateboard */
 	void Lean(const FInputActionValue& Value);
-	/** Called for looking input */
-	void Look(const FInputActionValue& Value);	
+	/** Toggle between skating and walking*/
 	void ToggleMovementMode();
+	/** Applies a forward force the the skate */
 	void Accelerate();
+	/** Increases the friction of the skate physics, causing it to break */
 	void BreakStarted();
-	void BreakCompleted();	
+	/** Resets the friction of the skate physics, stop breaking */
+	void BreakCompleted();
+
+	/** Called for movement input while walking */
+	void Move(const FInputActionValue& Value);
+	/** Called for looking input while walking */
+	void Look(const FInputActionValue& Value);
+	
+	void StartWalking();
+	void StartSkating();
 };
