@@ -21,11 +21,15 @@ int32 USBScoreSubsystem::GetScore()
 	return CurrentScore;
 }
 
-void USBScoreSubsystem::RequestAddScore(ACharacter* Character, int32 ScoreAmount)
+bool USBScoreSubsystem::RequestAddScore(ACharacter* Character, int32 ScoreAmount)
 {
 	USBCharacterMovementComponent* SkateMovementComponent = Cast<USBCharacterMovementComponent>(Character->GetMovementComponent());
 	if(SkateMovementComponent->GetIsSkateInAir() == true)
 	{
 		AddToScore(ScoreAmount);
+		OnScoreAdded.Broadcast(ScoreAmount, GetScore());
+		return true;
 	}
+
+	return false;
 }

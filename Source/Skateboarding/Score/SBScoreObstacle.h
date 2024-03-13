@@ -7,7 +7,7 @@
 #include "SBScoreObstacle.generated.h"
 
 UCLASS(BlueprintType, Blueprintable)
-class SKATEBOARDING_API ASBScoreObstacle : public ATriggerVolume
+class SKATEBOARDING_API ASBScoreObstacle : public AActor
 {
 	GENERATED_BODY()
 	
@@ -18,10 +18,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Score")
 	int32 ScoreAmount = 10;
 	
-protected:
+protected:	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	void OnOverlapBegin(AActor* OverlappedActor, AActor* OtherActor);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnScoreAdded();
 };

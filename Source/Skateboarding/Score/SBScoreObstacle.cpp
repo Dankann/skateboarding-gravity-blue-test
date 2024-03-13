@@ -11,7 +11,6 @@ ASBScoreObstacle::ASBScoreObstacle()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 // Called when the game starts or when spawned
@@ -46,7 +45,10 @@ void ASBScoreObstacle::OnOverlapBegin(AActor* OverlappedActor, AActor* OtherActo
 		return;
 	}
 
-	Subsystem->RequestAddScore(Character, ScoreAmount);
+	if(Subsystem->RequestAddScore(Character, ScoreAmount))
+	{
+		OnScoreAdded();
+	}
 
 	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, *FString::Printf(TEXT("Score: %d"), Subsystem->GetScore()));
 }

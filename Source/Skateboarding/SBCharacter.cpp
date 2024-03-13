@@ -258,7 +258,7 @@ void ASBCharacter::Lean(const FInputActionValue& Value)
 		{
 			// input is a float
 			LeanDirection = Value.Get<float>();
-			GetSkateMovementComponent()->AddForce(FollowCamera->GetRightVector() * (LeanDirection * LeanRate));
+			GetSkateMovementComponent()->AddForce(GetCapsuleComponent()->GetRightVector() * (LeanDirection * LeanRate));
 		}
 	}
 }
