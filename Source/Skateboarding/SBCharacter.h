@@ -16,6 +16,13 @@ struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
+UENUM(BlueprintType)
+enum ECameraMode
+{
+	CameraMode_SkateFreeLook     UMETA(DisplayName = "SkateFreeLook"),
+	CameraMode_SkateFixedForward UMETA(DisplayName = "SkateFixedForward"),
+};
+
 UCLASS(config=Game)
 class ASBCharacter : public ACharacter
 {
@@ -39,6 +46,10 @@ public:
 	/** Toggle between Skate/Wal movement modes Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ToggleSkate;
+
+	/** Toggle between fixed and movable camera mode while skateboarding - Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ToggleSkateCameraMode;
 	
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
@@ -99,6 +110,8 @@ protected:
 
 	int64 LastAccelerationTimeTicks;
 
+	ECameraMode CurrentCameraMode = ECameraMode::CameraMode_SkateFreeLook;
+
 	USBCharacterMovementComponent* SkateMovementComponent;
 
 public:
@@ -126,8 +139,10 @@ protected:
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaSeconds) override;
 
+	/** Make the camera face forward direction if the camera mode desires it */
 	void HandleCameraRotationWhileSkating(float DeltaSeconds);
-
+	/** Toggles between free look and fixed camera mode while skateboarding */
+	void ToggleCameraMode();
 	/** Called for lean right and left on a skateboard */
 	void Lean(const FInputActionValue& Value);
 	/** Resets lean value for animations */
@@ -150,4 +165,5 @@ protected:
 	
 	void StartWalking();
 	void StartSkating();
+	void UpdateSkateCameraControlRotation();
 };

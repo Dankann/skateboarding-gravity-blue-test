@@ -85,6 +85,13 @@ void ASBCharacter::HandleCameraRotationWhileSkating(float DeltaSeconds)
 {
 	if (GetSkateMovementComponent()->MovementMode == MOVE_Walking)
 	{
+		UE_LOG(LogTemplateCharacter, Log, TEXT("MOVE_Walking - dont move camera"));
+		return;
+	}
+
+	if(CurrentCameraMode == ECameraMode::CameraMode_SkateFreeLook)
+	{
+		UE_LOG(LogTemplateCharacter, Log, TEXT("CameraMode_SkateFreeLook - dont move camera"));
 		return;
 	}
 
@@ -95,6 +102,7 @@ void ASBCharacter::HandleCameraRotationWhileSkating(float DeltaSeconds)
 	CameraBoom->SetRelativeRotation(FRotator(0.f, Yaw, 0.f));
 	LastPosition = GetActorLocation();
 }
+
 
 void ASBCharacter::Tick(float DeltaSeconds)
 {
@@ -132,6 +140,7 @@ void ASBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		///Skating and Walking///
+		EnhancedInputComponent->BindAction(ToggleSkateCameraMode, ETriggerEvent::Completed, this, &ASBCharacter::ToggleCameraMode);
 		EnhancedInputComponent->BindAction(ToggleSkate, ETriggerEvent::Completed, this, &ASBCharacter::ToggleMovementMode);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ASBCharacter::Jump);
 
@@ -155,6 +164,19 @@ void ASBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 			       "'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."
 		       ), *GetNameSafe(this));
 	}
+}
+
+void ASBCharacter::ToggleCameraMode()
+{
+	if(CurrentCameraMode == ECameraMode::CameraMode_SkateFreeLook)
+	{
+		CurrentCameraMode = ECameraMode::CameraMode_SkateFixedForward;
+	}
+	else
+	{
+		CurrentCameraMode = ECameraMode::CameraMode_SkateFreeLook;
+	}
+	UpdateSkateCameraControlRotation();
 }
 
 void ASBCharacter::ToggleMovementMode()
@@ -230,7 +252,7 @@ void ASBCharacter::Lean(const FInputActionValue& Value)
 {
 	if (Controller != nullptr)
 	{
-		//Add Skate Impulse
+		//Add Skate Force
 		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom
 			&& GetSkateMovementComponent()->CustomMovementMode == CMOVE_Skate)
 		{
@@ -280,10 +302,11 @@ void ASBCharacter::Look(const FInputActionValue& Value)
 
 	if (Controller != nullptr)
 	{
-		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom)
+		if (GetSkateMovementComponent()->MovementMode == MOVE_Custom && CurrentCameraMode == ECameraMode::CameraMode_SkateFixedForward)
 		{
 			return;
 		}
+		
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
@@ -294,13 +317,9 @@ void ASBCharacter::StartWalking()
 {
 	UE_LOG(LogTemplateCharacter, Log, TEXT("Set walking"));
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking, MOVE_None);
-	SkateboardStaticMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-	                                        WalkingSkateboardSocket);
-	CameraBoom->bInheritPitch = true;
-	CameraBoom->bInheritRoll = true;
-	CameraBoom->bInheritYaw = true;
-	CameraBoom->bUsePawnControlRotation = true;
-
+	SkateboardStaticMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WalkingSkateboardSocket);
+	
+	UpdateSkateCameraControlRotation();
 	SkateboardStaticMesh->SetRelativeRotation(FRotator::ZeroRotator);
 }
 
@@ -309,9 +328,26 @@ void ASBCharacter::StartSkating()
 	UE_LOG(LogTemplateCharacter, Log, TEXT("Set skating"));
 	GetCharacterMovement()->SetMovementMode(MOVE_Custom, CMOVE_Skate);
 	SkateboardStaticMesh->AttachToComponent(SkateboardSocket, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-	CameraBoom->bInheritPitch = false;
-	CameraBoom->bInheritRoll = false;
-	CameraBoom->bInheritYaw = false;
-	CameraBoom->bUsePawnControlRotation = false;
+
+	UpdateSkateCameraControlRotation();
 	// SkateboardStaticMesh->SetRelativeRotation(FRotator(90.f, 0.f, 0.f));
+}
+
+void ASBCharacter::UpdateSkateCameraControlRotation()
+{
+	if (GetSkateMovementComponent()->MovementMode == MOVE_Custom)
+	{
+		bool bShouldUsePawnControlRotation = CurrentCameraMode == ECameraMode::CameraMode_SkateFreeLook;
+		CameraBoom->bInheritPitch = bShouldUsePawnControlRotation;
+		CameraBoom->bInheritRoll = bShouldUsePawnControlRotation;
+		CameraBoom->bInheritYaw = bShouldUsePawnControlRotation;
+		CameraBoom->bUsePawnControlRotation = bShouldUsePawnControlRotation;
+	}
+	else
+	{
+		CameraBoom->bInheritPitch = true;
+		CameraBoom->bInheritRoll = true;
+		CameraBoom->bInheritYaw = true;
+		CameraBoom->bUsePawnControlRotation = true;
+	}	
 }
