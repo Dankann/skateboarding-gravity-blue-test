@@ -20,6 +20,7 @@ The project contemplates a simple skateboarding controller, where the player can
 ### Other
 
 - Q - Toggles between skateboarding and walking
+- R - Reload map (in case the players fall off the map)
 - Spacebar - Jump
 
 ### General Information
