@@ -36,6 +36,11 @@ bool USBCharacterMovementComponent::GetIsGrounded()
 	return bIsGrounded;
 }
 
+bool USBCharacterMovementComponent::GetIsSkateInAir()
+{
+	return CustomMovementMode == CMOVE_Skate && GetIsGrounded();
+}
+
 void USBCharacterMovementComponent::PhysSkate(float DeltaTime, int32 Iterations)
 {
 	if(DeltaTime < MIN_TICK_TIME)

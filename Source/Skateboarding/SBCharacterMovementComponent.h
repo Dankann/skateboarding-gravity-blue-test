@@ -28,6 +28,8 @@ public:
 	void SetFrictionMultiplier(float Value);
 
 	bool GetIsGrounded();
+
+	bool GetIsSkateInAir();
 	
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Skating")
